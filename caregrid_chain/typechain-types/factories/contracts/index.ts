@@ -2,5 +2,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export * as blockedIpSol from "./BlockedIP.sol";
+export { AttackSignatureRegistry__factory } from "./AttackSignatureRegistry__factory";
 export { CareGridAccess__factory } from "./CareGridAccess__factory";
 export { Counter__factory } from "./Counter__factory";
+export { PatientRegistry__factory } from "./PatientRegistry__factory";

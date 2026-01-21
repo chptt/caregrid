@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-n046uykctxbt6c9ojaq!-govw9-u0$+&hklxavbjfw7=kf@vzm
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 
 
 # Application definition
@@ -46,15 +46,14 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
- 
+    'core.middleware.SecurityMiddleware',  # Re-enabled with Redis caching
 ]
-INSTALLED_APPS += ["corsheaders"]
-MIDDLEWARE = ["corsheaders.middleware.CorsMiddleware"] + MIDDLEWARE
 CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'caregrid.urls'
@@ -129,3 +128,98 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Redis Configuration
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
+REDIS_DB = 0
+
+# Redis Cache Configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}',
+    }
+}
+
+# Blockchain Configuration
+BLOCKCHAIN_PROVIDER_URL = 'http://127.0.0.1:8545'  # Local Hardhat network
+BLOCKCHAIN_NETWORK_ID = 31337  # Hardhat default network ID
+BLOCKCHAIN_GAS_LIMIT = 500000  # Default gas limit for transactions
+BLOCKCHAIN_CONFIRMATION_TIMEOUT = 30  # Seconds to wait for transaction confirmation
+
+# Contract Deployment Addresses (will be populated after deployment)
+CONTRACT_ADDRESSES = {
+    'PatientRegistry': '',
+    'BlockedIPRegistry': '',
+    'AttackSignatureRegistry': '',
+}
+
+# Security Settings
+THREAT_SCORE_THRESHOLDS = {
+    'LOW': 0,     # < 40 is LOW threat
+    'MEDIUM': 40, # 40-60 is MEDIUM threat  
+    'HIGH': 61,   # > 60 is HIGH threat (exceeds 60 means > 60)
+}
+
+RATE_LIMITS = {
+    'UNAUTHENTICATED': 100,  # requests per minute
+    'AUTHENTICATED': 500,     # requests per minute
+}
+
+AUTO_BLOCK_DURATION = 86400  # 24 hours in seconds
+CAPTCHA_FAILURE_BLOCK_DURATION = 900  # 15 minutes in seconds
+CAPTCHA_MAX_FAILURES = 3
+
+# Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'caregrid.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+        },
+        'blockchain': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+        },
+        'security': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+        },
+    },
+}
+
+# Django REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+    # Disable throttling for now since Redis is not available
+    'DEFAULT_THROTTLE_CLASSES': [],
+    'DEFAULT_THROTTLE_RATES': {}
+}

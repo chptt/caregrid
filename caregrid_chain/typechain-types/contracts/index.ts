@@ -3,5 +3,7 @@
 /* eslint-disable */
 import type * as blockedIpSol from "./BlockedIP.sol";
 export type { blockedIpSol };
+export type { AttackSignatureRegistry } from "./AttackSignatureRegistry";
 export type { CareGridAccess } from "./CareGridAccess";
 export type { Counter } from "./Counter";
+export type { PatientRegistry } from "./PatientRegistry";

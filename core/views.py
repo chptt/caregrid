@@ -1,17 +1,21 @@
 from django.http import HttpResponse, JsonResponse
+from django.utils import timezone
 from core.models import Patient, Doctor, Appointment
 from firewall.views import block_ip_auto, access_control
 from core.ip_tracker import track_login_attempt
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from .rate_limiting import rate_limit, get_rate_limit_status
 
 @api_view(['GET'])
+@rate_limit()  # Use default rate limits from settings
 def login_view(request):
     return Response({"message": "Login view placeholder"})
 
 def home(request):
     return HttpResponse("Welcome to CareGrid API 🚑")
 
+@rate_limit(limit_unauthenticated=50, limit_authenticated=200)  # Custom rate limits
 def dashboard_stats(request):
     # 🔹 Step 1: Extract IP safely
     ip = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -56,3 +60,40 @@ def dashboard_stats(request):
         "doctors": Doctor.objects.filter(branch=branch).count(),
     }
     return JsonResponse(data)
+
+@api_view(['GET'])
+@rate_limit()
+def rate_limit_status(request):
+    """
+    API endpoint to check current rate limit status for the requesting user/IP.
+    Useful for clients to understand their current rate limit situation.
+    """
+    status = get_rate_limit_status(request)
+    
+    return Response({
+        'rate_limit': {
+            'limit': status['limit'],
+            'remaining': status['remaining'],
+            'reset_time': status['reset_time'],
+            'window_seconds': status['window_seconds']
+        },
+        'user_type': 'authenticated' if request.user.is_authenticated else 'unauthenticated'
+    })
+
+@api_view(['GET'])
+@rate_limit(limit_unauthenticated=10, limit_authenticated=50)  # Stricter limits for testing
+def test_rate_limit(request):
+    """
+    Test endpoint for demonstrating rate limiting functionality.
+    Has stricter rate limits to make testing easier.
+    """
+    from .rate_limiting import get_client_ip
+    
+    ip = get_client_ip(request)
+    
+    return Response({
+        'message': 'Rate limit test successful',
+        'ip_address': ip,
+        'user_authenticated': request.user.is_authenticated,
+        'timestamp': timezone.now().isoformat()
+    })

@@ -14,9 +14,13 @@ export type { ERC165 } from "./@openzeppelin/contracts/utils/introspection/ERC16
 export { ERC165__factory } from "./factories/@openzeppelin/contracts/utils/introspection/ERC165__factory";
 export type { IERC165 } from "./@openzeppelin/contracts/utils/introspection/IERC165";
 export { IERC165__factory } from "./factories/@openzeppelin/contracts/utils/introspection/IERC165__factory";
+export type { AttackSignatureRegistry } from "./contracts/AttackSignatureRegistry";
+export { AttackSignatureRegistry__factory } from "./factories/contracts/AttackSignatureRegistry__factory";
 export type { BlockedIPRegistry } from "./contracts/BlockedIP.sol/BlockedIPRegistry";
 export { BlockedIPRegistry__factory } from "./factories/contracts/BlockedIP.sol/BlockedIPRegistry__factory";
 export type { CareGridAccess } from "./contracts/CareGridAccess";
 export { CareGridAccess__factory } from "./factories/contracts/CareGridAccess__factory";
 export type { Counter } from "./contracts/Counter";
 export { Counter__factory } from "./factories/contracts/Counter__factory";
+export type { PatientRegistry } from "./contracts/PatientRegistry";
+export { PatientRegistry__factory } from "./factories/contracts/PatientRegistry__factory";

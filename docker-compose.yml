@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  # Redis service for caching and rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: medichain_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medichain_network
+
+  # Hardhat blockchain node
+  hardhat:
+    image: node:18-alpine
+    container_name: medichain_hardhat
+    working_dir: /app
+    ports:
+      - "8545:8545"
+    volumes:
+      - ./caregrid_chain:/app
+      - hardhat_data:/app/node_modules
+    command: >
+      sh -c "
+        npm install &&
+        npx hardhat node --hostname 0.0.0.0
+      "
+    environment:
+      - NODE_ENV=development
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8545"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - medichain_network
+
+  # Contract deployment service
+  deploy-contracts:
+    image: node:18-alpine
+    container_name: medichain_deploy
+    working_dir: /app
+    volumes:
+      - ./caregrid_chain:/app
+      - hardhat_data:/app/node_modules
+    command: >
+      sh -c "
+        npm install &&
+        sleep 30 &&
+        npx hardhat run scripts/deploy-all.ts --network localhost
+      "
+    depends_on:
+      hardhat:
+        condition: service_healthy
+    networks:
+      - medichain_network
+    restart: "no"
+
+  # Django application
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medichain_django
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ./db.sqlite3:/app/db.sqlite3
+      - ./caregrid_chain/deployments:/app/caregrid_chain/deployments:ro
+    environment:
+      - DJANGO_SETTINGS_MODULE=caregrid.settings
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - BLOCKCHAIN_PROVIDER_URL=http://hardhat:8545
+      - DEBUG=False
+      - ALLOWED_HOSTS=localhost,127.0.0.1,django
+    depends_on:
+      redis:
+        condition: service_healthy
+      hardhat:
+        condition: service_healthy
+      deploy-contracts:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - medichain_network
+    restart: unless-stopped
+
+  # Database migration service
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medichain_migrate
+    volumes:
+      - ./db.sqlite3:/app/db.sqlite3
+      - ./logs:/app/logs
+    environment:
+      - DJANGO_SETTINGS_MODULE=caregrid.settings
+    command: >
+      sh -c "
+        python manage.py makemigrations &&
+        python manage.py migrate
+      "
+    depends_on:
+      - redis
+    networks:
+      - medichain_network
+    restart: "no"
+
+volumes:
+  redis_data:
+    driver: local
+  hardhat_data:
+    driver: local
+
+networks:
+  medichain_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

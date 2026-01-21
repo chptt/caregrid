@@ -30,6 +30,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IERC165__factory>;
     getContractFactory(
+      name: "AttackSignatureRegistry",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.AttackSignatureRegistry__factory>;
+    getContractFactory(
       name: "BlockedIPRegistry",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.BlockedIPRegistry__factory>;
@@ -41,6 +45,10 @@ declare module "hardhat/types/runtime" {
       name: "Counter",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.Counter__factory>;
+    getContractFactory(
+      name: "PatientRegistry",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.PatientRegistry__factory>;
 
     getContractAt(
       name: "AccessControl",
@@ -63,6 +71,11 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.IERC165>;
     getContractAt(
+      name: "AttackSignatureRegistry",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.AttackSignatureRegistry>;
+    getContractAt(
       name: "BlockedIPRegistry",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -77,6 +90,11 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.Counter>;
+    getContractAt(
+      name: "PatientRegistry",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.PatientRegistry>;
 
     deployContract(
       name: "AccessControl",
@@ -95,6 +113,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IERC165>;
     deployContract(
+      name: "AttackSignatureRegistry",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.AttackSignatureRegistry>;
+    deployContract(
       name: "BlockedIPRegistry",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.BlockedIPRegistry>;
@@ -106,6 +128,10 @@ declare module "hardhat/types/runtime" {
       name: "Counter",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.Counter>;
+    deployContract(
+      name: "PatientRegistry",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.PatientRegistry>;
 
     deployContract(
       name: "AccessControl",
@@ -128,6 +154,11 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IERC165>;
     deployContract(
+      name: "AttackSignatureRegistry",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.AttackSignatureRegistry>;
+    deployContract(
       name: "BlockedIPRegistry",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -142,6 +173,11 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.Counter>;
+    deployContract(
+      name: "PatientRegistry",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.PatientRegistry>;
 
     // default types
     getContractFactory(

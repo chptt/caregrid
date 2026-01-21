@@ -9,6 +9,7 @@ import type {
   Result,
   Interface,
   EventFragment,
+  AddressLike,
   ContractRunner,
   ContractMethod,
   Listener,
@@ -23,44 +24,153 @@ import type {
 } from "../../common";
 
 export declare namespace BlockedIPRegistry {
-  export type BlockEntryStruct = { ip: string; timestamp: BigNumberish };
+  export type BlockEntryStruct = {
+    ipHash: BytesLike;
+    blockTime: BigNumberish;
+    expiryTime: BigNumberish;
+    reason: string;
+    blockedBy: AddressLike;
+    isManual: boolean;
+  };
 
-  export type BlockEntryStructOutput = [ip: string, timestamp: bigint] & {
-    ip: string;
-    timestamp: bigint;
+  export type BlockEntryStructOutput = [
+    ipHash: string,
+    blockTime: bigint,
+    expiryTime: bigint,
+    reason: string,
+    blockedBy: string,
+    isManual: boolean
+  ] & {
+    ipHash: string;
+    blockTime: bigint;
+    expiryTime: bigint;
+    reason: string;
+    blockedBy: string;
+    isManual: boolean;
   };
 }
 
 export interface BlockedIPRegistryInterface extends Interface {
   getFunction(
-    nameOrSignature: "blockIP" | "blockedIPs" | "getBlockedIPs"
+    nameOrSignature:
+      | "blockIP"
+      | "blockedIPList"
+      | "blockedIPs"
+      | "cleanupExpiredBlocks"
+      | "getBlockEntry"
+      | "getBlockedIPCount"
+      | "getBlockedIPList"
+      | "isBlocked"
+      | "isIPBlocked"
+      | "unblockIP"
   ): FunctionFragment;
 
-  getEvent(nameOrSignatureOrTopic: "IPBlocked"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "IPBlocked" | "IPUnblocked"): EventFragment;
 
-  encodeFunctionData(functionFragment: "blockIP", values: [string]): string;
   encodeFunctionData(
-    functionFragment: "blockedIPs",
+    functionFragment: "blockIP",
+    values: [BytesLike, BigNumberish, string, boolean]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "blockedIPList",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "getBlockedIPs",
+    functionFragment: "blockedIPs",
+    values: [BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "cleanupExpiredBlocks",
     values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getBlockEntry",
+    values: [BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getBlockedIPCount",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getBlockedIPList",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "isBlocked",
+    values: [BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "isIPBlocked",
+    values: [BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "unblockIP",
+    values: [BytesLike]
   ): string;
 
   decodeFunctionResult(functionFragment: "blockIP", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "blockedIPs", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "getBlockedIPs",
+    functionFragment: "blockedIPList",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "blockedIPs", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "cleanupExpiredBlocks",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getBlockEntry",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getBlockedIPCount",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getBlockedIPList",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "isBlocked", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "isIPBlocked",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "unblockIP", data: BytesLike): Result;
 }
 
 export namespace IPBlockedEvent {
-  export type InputTuple = [ip: string, timestamp: BigNumberish];
-  export type OutputTuple = [ip: string, timestamp: bigint];
+  export type InputTuple = [
+    ipHash: BytesLike,
+    blockTime: BigNumberish,
+    expiryTime: BigNumberish,
+    reason: string,
+    isManual: boolean
+  ];
+  export type OutputTuple = [
+    ipHash: string,
+    blockTime: bigint,
+    expiryTime: bigint,
+    reason: string,
+    isManual: boolean
+  ];
   export interface OutputObject {
-    ip: string;
+    ipHash: string;
+    blockTime: bigint;
+    expiryTime: bigint;
+    reason: string;
+    isManual: boolean;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace IPUnblockedEvent {
+  export type InputTuple = [ipHash: BytesLike, timestamp: BigNumberish];
+  export type OutputTuple = [ipHash: string, timestamp: bigint];
+  export interface OutputObject {
+    ipHash: string;
     timestamp: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
@@ -112,19 +222,51 @@ export interface BlockedIPRegistry extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
-  blockIP: TypedContractMethod<[ip: string], [void], "nonpayable">;
+  blockIP: TypedContractMethod<
+    [
+      ipHash: BytesLike,
+      duration: BigNumberish,
+      reason: string,
+      manual: boolean
+    ],
+    [void],
+    "nonpayable"
+  >;
+
+  blockedIPList: TypedContractMethod<[arg0: BigNumberish], [string], "view">;
 
   blockedIPs: TypedContractMethod<
-    [arg0: BigNumberish],
-    [[string, bigint] & { ip: string; timestamp: bigint }],
+    [arg0: BytesLike],
+    [
+      [string, bigint, bigint, string, string, boolean] & {
+        ipHash: string;
+        blockTime: bigint;
+        expiryTime: bigint;
+        reason: string;
+        blockedBy: string;
+        isManual: boolean;
+      }
+    ],
     "view"
   >;
 
-  getBlockedIPs: TypedContractMethod<
-    [],
-    [BlockedIPRegistry.BlockEntryStructOutput[]],
+  cleanupExpiredBlocks: TypedContractMethod<[], [void], "nonpayable">;
+
+  getBlockEntry: TypedContractMethod<
+    [ipHash: BytesLike],
+    [BlockedIPRegistry.BlockEntryStructOutput],
     "view"
   >;
+
+  getBlockedIPCount: TypedContractMethod<[], [bigint], "view">;
+
+  getBlockedIPList: TypedContractMethod<[], [string[]], "view">;
+
+  isBlocked: TypedContractMethod<[arg0: BytesLike], [boolean], "view">;
+
+  isIPBlocked: TypedContractMethod<[ipHash: BytesLike], [boolean], "view">;
+
+  unblockIP: TypedContractMethod<[ipHash: BytesLike], [void], "nonpayable">;
 
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
@@ -132,21 +274,60 @@ export interface BlockedIPRegistry extends BaseContract {
 
   getFunction(
     nameOrSignature: "blockIP"
-  ): TypedContractMethod<[ip: string], [void], "nonpayable">;
+  ): TypedContractMethod<
+    [
+      ipHash: BytesLike,
+      duration: BigNumberish,
+      reason: string,
+      manual: boolean
+    ],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "blockedIPList"
+  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
   getFunction(
     nameOrSignature: "blockedIPs"
   ): TypedContractMethod<
-    [arg0: BigNumberish],
-    [[string, bigint] & { ip: string; timestamp: bigint }],
+    [arg0: BytesLike],
+    [
+      [string, bigint, bigint, string, string, boolean] & {
+        ipHash: string;
+        blockTime: bigint;
+        expiryTime: bigint;
+        reason: string;
+        blockedBy: string;
+        isManual: boolean;
+      }
+    ],
     "view"
   >;
   getFunction(
-    nameOrSignature: "getBlockedIPs"
+    nameOrSignature: "cleanupExpiredBlocks"
+  ): TypedContractMethod<[], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "getBlockEntry"
   ): TypedContractMethod<
-    [],
-    [BlockedIPRegistry.BlockEntryStructOutput[]],
+    [ipHash: BytesLike],
+    [BlockedIPRegistry.BlockEntryStructOutput],
     "view"
   >;
+  getFunction(
+    nameOrSignature: "getBlockedIPCount"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "getBlockedIPList"
+  ): TypedContractMethod<[], [string[]], "view">;
+  getFunction(
+    nameOrSignature: "isBlocked"
+  ): TypedContractMethod<[arg0: BytesLike], [boolean], "view">;
+  getFunction(
+    nameOrSignature: "isIPBlocked"
+  ): TypedContractMethod<[ipHash: BytesLike], [boolean], "view">;
+  getFunction(
+    nameOrSignature: "unblockIP"
+  ): TypedContractMethod<[ipHash: BytesLike], [void], "nonpayable">;
 
   getEvent(
     key: "IPBlocked"
@@ -155,9 +336,16 @@ export interface BlockedIPRegistry extends BaseContract {
     IPBlockedEvent.OutputTuple,
     IPBlockedEvent.OutputObject
   >;
+  getEvent(
+    key: "IPUnblocked"
+  ): TypedContractEvent<
+    IPUnblockedEvent.InputTuple,
+    IPUnblockedEvent.OutputTuple,
+    IPUnblockedEvent.OutputObject
+  >;
 
   filters: {
-    "IPBlocked(string,uint256)": TypedContractEvent<
+    "IPBlocked(bytes32,uint256,uint256,string,bool)": TypedContractEvent<
       IPBlockedEvent.InputTuple,
       IPBlockedEvent.OutputTuple,
       IPBlockedEvent.OutputObject
@@ -166,6 +354,17 @@ export interface BlockedIPRegistry extends BaseContract {
       IPBlockedEvent.InputTuple,
       IPBlockedEvent.OutputTuple,
       IPBlockedEvent.OutputObject
+    >;
+
+    "IPUnblocked(bytes32,uint256)": TypedContractEvent<
+      IPUnblockedEvent.InputTuple,
+      IPUnblockedEvent.OutputTuple,
+      IPUnblockedEvent.OutputObject
+    >;
+    IPUnblocked: TypedContractEvent<
+      IPUnblockedEvent.InputTuple,
+      IPUnblockedEvent.OutputTuple,
+      IPUnblockedEvent.OutputObject
     >;
   };
 }

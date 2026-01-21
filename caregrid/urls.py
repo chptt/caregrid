@@ -23,7 +23,7 @@ urlpatterns = [
     path('', home),
     path('admin/', admin.site.urls),
     path('api/', include('core.urls')),  # 👈 All endpoints now live under /api/
-    path("firewall/", include("firewall.urls")),
+    path("api/", include("firewall.urls")),  # Security dashboard endpoints under /api/
     path('api/users/', include('users.urls')),
 
 ]
