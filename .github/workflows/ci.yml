@@ -1,0 +1,100 @@
+name: CareGrid CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+
+      - name: Cache Node dependencies
+        uses: actions/cache@v4
+        with:
+          path: caregrid_chain/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/caregrid_chain/package-lock.json') }}
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Node.js dependencies
+        run: cd caregrid_chain && npm ci
+
+      - name: Set up environment
+        run: cp .env.example .env
+
+      - name: Run Django migrations
+        run: python manage.py migrate
+
+      - name: Load test data
+        run: python setup_test_data.py
+
+      - name: Run Python tests
+        run: python -m pytest tests/ -v --tb=short
+
+      - name: Run smart contract tests
+        run: cd caregrid_chain && npx hardhat test
+
+      - name: Django checks
+        run: |
+          python manage.py check
+          python manage.py collectstatic --noinput --dry-run
+
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t caregrid:latest .
+
+      - name: Test Docker container
+        run: |
+          docker run --rm -d --name caregrid-test -p 8000:8000 caregrid:latest
+          sleep 10
+          docker logs caregrid-test
+          docker stop caregrid-test
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, build-docker]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to staging
+        run: echo "Deploying to staging environment"

@@ -1,0 +1,35 @@
+# CareGrid Background Tasks Cron Configuration
+# 
+# This file shows example cron entries for running background tasks.
+# Copy the relevant lines to your system's crontab using 'crontab -e'
+#
+# Note: Adjust paths to match your installation directory
+
+# Run cleanup of expired blocks every hour
+0 * * * * cd /path/to/caregrid && python manage.py cleanup_expired_blocks >> logs/cleanup.log 2>&1
+
+# Run blockchain sync every 15 minutes
+*/15 * * * * cd /path/to/caregrid && python manage.py sync_blockchain >> logs/sync.log 2>&1
+
+# Run attack signature sync every 30 minutes
+*/30 * * * * cd /path/to/caregrid && python manage.py sync_attack_signatures >> logs/signatures.log 2>&1
+
+# Run all background tasks together every hour (alternative approach)
+0 * * * * cd /path/to/caregrid && python scripts/run_background_tasks.py
+
+# Daily cleanup with force flag (in case blockchain is down)
+0 2 * * * cd /path/to/caregrid && python manage.py cleanup_expired_blocks --force >> logs/daily_cleanup.log 2>&1
+
+# Weekly comprehensive sync with statistics
+0 3 * * 0 cd /path/to/caregrid && python manage.py sync_blockchain --stats >> logs/weekly_stats.log 2>&1
+
+# Examples for Windows Task Scheduler (PowerShell commands):
+# 
+# Hourly cleanup:
+# powershell.exe -Command "cd C:\caregrid; python manage.py cleanup_expired_blocks"
+#
+# 15-minute sync:
+# powershell.exe -Command "cd C:\caregrid; python manage.py sync_blockchain"
+#
+# Daily comprehensive run:
+# powershell.exe -Command "cd C:\caregrid; python scripts/run_background_tasks.py"

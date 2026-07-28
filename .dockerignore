@@ -1,0 +1,64 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.tox/
+.mypy_cache/
+.pytest_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+*.log
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+logs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker (don't copy into build context)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+docs/
+*.md
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak

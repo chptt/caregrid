@@ -1,0 +1,581 @@
+{
+  "info": {
+    "name": "MediChain API",
+    "description": "Complete API collection for MediChain blockchain healthcare security system",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('auth_token', response.token);",
+                  "    pm.test('Login successful', function () {",
+                  "        pm.expect(response.token).to.be.a('string');",
+                  "    });",
+                  "} else {",
+                  "    pm.test('Login failed', function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Patient Management",
+      "item": [
+        {
+          "name": "Register New Patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Patient registered successfully', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.blockchain_id).to.be.a('string');",
+                  "    pm.expect(response.blockchain_registered).to.be.true;",
+                  "    pm.collectionVariables.set('patient_id', response.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice Johnson\",\n  \"date_of_birth\": \"1985-03-15\",\n  \"gender\": \"F\",\n  \"contact_phone\": \"+1555123456\",\n  \"contact_email\": \"alice.johnson@email.com\",\n  \"address\": \"456 Oak Avenue, Springfield, IL 62701\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/patients/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Patient Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Patient details retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.id).to.be.a('number');",
+                  "    pm.expect(response.blockchain_id).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/patients/{{patient_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", "{{patient_id}}", ""]
+            }
+          }
+        },
+        {
+          "name": "List All Patients",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Patients list retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.results).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/patients/?page=1&page_size=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", ""],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "page_size",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Patient by Blockchain ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/patients/search/?blockchain_id={{blockchain_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", "search", ""],
+              "query": [
+                {
+                  "key": "blockchain_id",
+                  "value": "{{blockchain_id}}",
+                  "description": "Set this variable from a patient registration response"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Appointment Management",
+      "item": [
+        {
+          "name": "Create Appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Appointment created successfully', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.patient.id).to.be.a('number');",
+                  "    pm.collectionVariables.set('appointment_id', response.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": {{patient_id}},\n  \"date\": \"2024-02-15\",\n  \"time\": \"10:00:00\",\n  \"doctor\": \"Dr. Sarah Wilson\",\n  \"department\": \"General Medicine\",\n  \"notes\": \"Regular checkup - patient reports feeling well\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/appointments/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", ""]
+            }
+          }
+        },
+        {
+          "name": "List Appointments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Appointments list retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.results).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/appointments/?page=1&page_size=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", ""],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "page_size",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Appointment Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/appointments/{{appointment_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "{{appointment_id}}", ""]
+            }
+          }
+        },
+        {
+          "name": "Filter Appointments by Patient",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/appointments/?patient_id={{patient_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", ""],
+              "query": [
+                {
+                  "key": "patient_id",
+                  "value": "{{patient_id}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Security Dashboard",
+      "item": [
+        {
+          "name": "Get Security Metrics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Security dashboard retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.current_request_rate).to.be.a('number');",
+                  "    pm.expect(response.top_threats).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/security/dashboard/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "security", "dashboard", ""]
+            }
+          }
+        },
+        {
+          "name": "Manually Block IP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('IP blocked successfully', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    pm.expect(response.blockchain_tx).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ip_address\": \"192.168.1.100\",\n  \"reason\": \"Manual block for testing purposes\",\n  \"duration_hours\": 24\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/security/block/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "security", "block", ""]
+            }
+          }
+        },
+        {
+          "name": "Unblock IP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('IP unblocked successfully', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ip_address\": \"192.168.1.100\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/security/unblock/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "security", "unblock", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Security Logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/security/logs/?page=1&page_size=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "security", "logs", ""],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "page_size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "CAPTCHA System",
+      "item": [
+        {
+          "name": "Generate CAPTCHA",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('CAPTCHA generated', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.captcha_id).to.be.a('string');",
+                  "    pm.collectionVariables.set('captcha_id', response.captcha_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/captcha/generate/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "captcha", "generate", ""]
+            }
+          }
+        },
+        {
+          "name": "Verify CAPTCHA",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"captcha_id\": \"{{captcha_id}}\",\n  \"response\": \"ABCD\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/captcha/verify/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "captcha", "verify", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Load Testing",
+      "item": [
+        {
+          "name": "Rapid Requests (Trigger Rate Limiting)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// This will be run multiple times to trigger rate limiting",
+                  "console.log('Making rapid request #' + (pm.globals.get('request_count') || 1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/patients/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", ""]
+            }
+          }
+        },
+        {
+          "name": "Pattern Repetition (Same Endpoint)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/patients/1/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", "1", ""]
+            }
+          }
+        },
+        {
+          "name": "No Session Request (Bot-like)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "User-Agent",
+                "value": "Bot/1.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/patients/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "patients", ""]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global pre-request script",
+          "console.log('Making request to: ' + pm.request.url);"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test script",
+          "pm.test('Response time is reasonable', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});",
+          "",
+          "pm.test('Response has correct content type', function () {",
+          "    if (pm.response.code !== 429 && pm.response.code !== 403) {",
+          "        pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "    }",
+          "});"
+        ]
+      }
+    }
+  ]
+}
