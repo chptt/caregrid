@@ -1,0 +1,9 @@
+Explain the following diagnosis or health condition in simple, easy-to-understand language that a patient with no medical background can comprehend.
+
+Guidelines:
+- Use everyday words instead of medical terms
+- Break down complex concepts into simple parts
+- Use analogies when helpful
+- Be reassuring but honest
+- Encourage the patient to ask their doctor for more details
+- Remind them that this is general information

@@ -1,11 +1,24 @@
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from core.models import Patient, Doctor, Appointment
-from firewall.views import block_ip_auto, access_control
 from core.ip_tracker import track_login_attempt
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .rate_limiting import rate_limit, get_rate_limit_status
+
+
+_access_control_contract = None
+
+
+def _get_access_control():
+    global _access_control_contract
+    if _access_control_contract is None:
+        try:
+            from firewall.views import _get_access_control as _fac
+            _access_control_contract = _fac()
+        except Exception:
+            pass
+    return _access_control_contract
 
 @api_view(['GET'])
 @rate_limit()  # Use default rate limits from settings
@@ -29,19 +42,20 @@ def dashboard_stats(request):
 
     # 🔹 Step 3: Check if IP is already blocked
     try:
-        if access_control.functions.isBlocked(ip).call():
+        contract = _get_access_control()
+        if contract and contract.functions.isBlocked(ip).call():
             return JsonResponse({"error": "Access denied. IP is blocked due to suspicious activity."}, status=403)
-    except Exception as e:
-        return JsonResponse({"error": f"Blockchain check failed: {str(e)}"}, status=500)
+    except Exception:
+        pass
 
     # 🔹 Step 4: Auto-block if too many requests
     if attempts > 10:
         try:
+            from firewall.views import block_ip_auto
             block_ip_auto(ip)
-            # Optional: log blocked IPs to file or DB here
             return JsonResponse({"error": "IP blocked due to rapid access attempts"}, status=403)
-        except Exception as e:
-            return JsonResponse({"error": f"Failed to block IP: {str(e)}"}, status=500)
+        except Exception:
+            pass
 
     # 🔹 Step 5: Authenticated user check
     user = request.user

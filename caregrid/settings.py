@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'core',
     'users',
     'firewall',
+    'caregrid.apps.ai',
 ]
 
 MIDDLEWARE = [
@@ -226,8 +227,26 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': False,
         },
+        'ai': {
+            'handlers': ['console', 'app_file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
     },
 }
+
+# AI Configuration
+AI_LLM_PROVIDER = os.environ.get('AI_LLM_PROVIDER', 'openai')
+AI_LLM_MODEL = os.environ.get('AI_LLM_MODEL', 'gpt-4o-mini')
+AI_LLM_API_KEY = os.environ.get('AI_LLM_API_KEY', '')
+AI_EMBEDDING_PROVIDER = os.environ.get('AI_EMBEDDING_PROVIDER', 'local')
+AI_EMBEDDING_MODEL = os.environ.get('AI_EMBEDDING_MODEL', 'all-MiniLM-L6-v2')
+AI_EMBEDDING_DIMENSION = int(os.environ.get('AI_EMBEDDING_DIMENSION', '384'))
+AI_MAX_UPLOAD_SIZE_MB = int(os.environ.get('AI_MAX_UPLOAD_SIZE_MB', '10'))
+
+# File upload settings for AI documents
+FILE_UPLOAD_MAX_MEMORY_SIZE = int(os.environ.get('AI_MAX_UPLOAD_SIZE_MB', '10')) * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = FILE_UPLOAD_MAX_MEMORY_SIZE
 
 # Django REST Framework
 
