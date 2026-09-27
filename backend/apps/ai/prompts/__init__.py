@@ -1,0 +1,1 @@
+"""CareGrid AI prompts module."""

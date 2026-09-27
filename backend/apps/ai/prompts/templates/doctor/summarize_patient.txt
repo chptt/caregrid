@@ -1,0 +1,25 @@
+Provide a comprehensive summary of the patient's medical history based on available data. Include:
+1. Patient demographics (age, gender)
+2. Past medical history from records
+3. Chronic conditions
+4. Surgical history
+5. Allergies
+6. Family history (if available)
+7. Social history
+
+Format your response as:
+
+## Reasoning
+[Step-by-step reasoning]
+
+## Summary
+[Comprehensive patient history summary]
+
+## Confidence
+[Confidence assessment]
+
+## Medical Disclaimer
+AI Suggestion — Requires Doctor Verification
+
+## Recommended Follow-up
+[Suggested next steps for the doctor]

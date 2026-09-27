@@ -1,0 +1,45 @@
+Extract structured medical information from the following document.
+
+Document: {filename}
+
+{document_text}
+
+Extract ALL of the following if present:
+1. Diseases / Conditions mentioned
+2. Medications (name, dosage, frequency)
+3. Allergies
+4. Vital Signs (BP, heart rate, temperature, etc.)
+5. Laboratory Values (test name, value, reference range)
+6. Doctor Names
+7. Visit Dates
+
+Return your response in this EXACT FORMAT:
+
+## Reasoning
+[Explain your extraction logic step by step]
+
+## Extracted Data
+```json
+{
+  "diseases": [{"name": "...", "confidence": 95}],
+  "medications": [{"name": "...", "dosage": "...", "frequency": "...", "confidence": 90}],
+  "allergies": [{"substance": "...", "severity": "...", "confidence": 85}],
+  "vital_signs": [{"name": "...", "value": "...", "confidence": 95}],
+  "lab_values": [{"test": "...", "value": "...", "reference_range": "...", "confidence": 90}],
+  "doctor_names": ["..."],
+  "visit_dates": ["..."]
+}
+```
+
+## Summary
+[2-3 sentence concise clinical summary]
+
+## Confidence
+Overall confidence: XX%
+[List any low-confidence items]
+
+## Medical Disclaimer
+AI Suggestion — Requires Doctor Verification. This is an AI-generated extraction and has not been reviewed by a clinician.
+
+## Recommended Follow-up
+[What the doctor should verify, what additional tests or records might be needed]

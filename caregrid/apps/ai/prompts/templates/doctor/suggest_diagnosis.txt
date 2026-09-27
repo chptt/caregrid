@@ -1,7 +1,0 @@
-Based on the provided patient information and clinical context, suggest potential diagnoses to consider. For each suggestion:
-1. List the potential diagnosis
-2. Explain the reasoning behind the suggestion
-3. Note supporting symptoms or findings
-4. Recommend confirmatory tests or examinations
-
-Remember: These are considerations for the doctor to evaluate, NOT definitive diagnoses. Always present as differential diagnoses.

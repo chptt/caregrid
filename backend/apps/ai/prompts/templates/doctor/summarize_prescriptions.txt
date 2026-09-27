@@ -1,0 +1,22 @@
+Summarize the patient's prescription history. Include:
+1. Current active prescriptions
+2. Past prescriptions
+3. Dosages and frequencies
+4. Any patterns or concerns
+
+Format your response as:
+
+## Reasoning
+[Step-by-step reasoning]
+
+## Summary
+[Prescription history summary]
+
+## Confidence
+[Confidence assessment]
+
+## Medical Disclaimer
+AI Suggestion — Requires Doctor Verification
+
+## Recommended Follow-up
+[Suggested next steps]

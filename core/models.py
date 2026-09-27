@@ -47,7 +47,11 @@ class Patient(models.Model):
         """Generate unique blockchain ID from patient data"""
         if not self.date_of_birth or not self.contact_email:
             return None
-        data = f"{self.name}{self.date_of_birth}{self.contact_email}"
+        dob = self.date_of_birth
+        if isinstance(dob, str):
+            from datetime import datetime
+            dob = datetime.strptime(dob, '%Y-%m-%d').date()
+        data = f"{self.name}{dob}{self.contact_email}"
         return "0x" + Web3.keccak(text=data).hex()
     
     @staticmethod
@@ -60,8 +64,12 @@ class Patient(models.Model):
         """Calculate age from date of birth"""
         if not self.date_of_birth:
             return None
+        dob = self.date_of_birth
+        if isinstance(dob, str):
+            from datetime import datetime
+            dob = datetime.strptime(dob, '%Y-%m-%d').date()
         today = date.today()
-        return today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
+        return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
     
     def save(self, *args, **kwargs):
         """Override save to auto-calculate age and blockchain ID"""

@@ -1,0 +1,25 @@
+Review the patient's available data and highlight any abnormal or notable findings. Include:
+1. Abnormal lab values or vital signs
+2. Unusual patterns in appointments or prescriptions
+3. Potential drug interactions
+4. Gaps in care or missing information
+5. Risk factors
+
+Format your response as:
+
+## Reasoning
+[Step-by-step reasoning]
+
+## Abnormal Findings
+- Finding 1 (Severity: High/Medium/Low)
+  - Details: ...
+  - Recommended action: ...
+
+## Confidence
+[Confidence assessment]
+
+## Medical Disclaimer
+AI Suggestion — Requires Doctor Verification
+
+## Recommended Follow-up
+[Suggested next steps]

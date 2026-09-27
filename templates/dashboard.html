@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareGrid X - Doctor Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --ai-badge-bg: #e7f1ff;
+            --ai-badge-color: #0d6efd;
+        }
+        [data-bs-theme="dark"] {
+            --ai-badge-bg: #1a2d4a;
+            --ai-badge-color: #6ea8fe;
+        }
+        body { background: var(--bs-body-bg); }
+        .sidebar {
+            min-height: 100vh;
+            background: var(--bs-dark);
+            color: white;
+        }
+        [data-bs-theme="dark"] .sidebar { background: #1a1d21; }
+        .sidebar .nav-link { color: rgba(255,255,255,.7); }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { color: white; background: rgba(255,255,255,.1); }
+        .main-content { padding: 2rem; }
+        .ai-badge {
+            background: var(--ai-badge-bg);
+            color: var(--ai-badge-color);
+            font-size: 0.7rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+        }
+        .chat-message { max-width: 80%; margin-bottom: 1rem; }
+        .chat-message.user { margin-left: auto; }
+        .chat-message.assistant { margin-right: auto; }
+        .message-content { padding: 0.75rem 1rem; border-radius: 1rem; }
+        .chat-message.user .message-content { background: var(--primary-color); color: white; border-bottom-right-radius: 0.25rem; }
+        .chat-message.assistant .message-content { background: var(--bs-tertiary-bg); border-bottom-left-radius: 0.25rem; }
+        .loading-spinner { display: none; }
+        .loading-spinner.active { display: flex; }
+        .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; }
+        .empty-state { text-align: center; padding: 3rem; color: var(--bs-secondary-color); }
+        .empty-state i { font-size: 3rem; margin-bottom: 1rem; }
+        .explanation-panel { background: var(--bs-tertiary-bg); border-left: 4px solid var(--primary-color); border-radius: 0.5rem; padding: 1rem; margin-top: 0.5rem; font-size: 0.875rem; }
+        .explanation-panel h6 { color: var(--primary-color); margin-bottom: 0.25rem; }
+        .confidence-high { color: #198754; }
+        .confidence-medium { color: #ffc107; }
+        .confidence-low { color: #dc3545; }
+        .document-preview { max-height: 400px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 0.8rem; background: var(--bs-tertiary-bg); padding: 1rem; border-radius: 0.5rem; }
+        @media (max-width: 768px) { .sidebar { min-height: auto; } .main-content { padding: 1rem; } .chat-message { max-width: 95%; } }
+        .agent-badge { font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 1rem; }
+        .agent-badge.doctor { background: #d1e7dd; color: #0f5132; }
+        .agent-badge.medical_records { background: #cff4fc; color: #055160; }
+    </style>
+</head>
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar p-3 d-none d-md-block">
+                <h5 class="mb-4"><i class="bi bi-heart-pulse me-2"></i>CareGrid X</h5>
+                <hr class="border-secondary">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" data-section="dashboard">
+                            <i class="bi bi-speedometer2 me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="chat">
+                            <i class="bi bi-chat-dots me-2"></i>Doctor Chat
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="records">
+                            <i class="bi bi-file-medical me-2"></i>Medical Records
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="documents">
+                            <i class="bi bi-file-earmark-text me-2"></i>Documents
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="conversations">
+                            <i class="bi bi-chat-square-text me-2"></i>Conversations
+                        </a>
+                    </li>
+                </ul>
+                <hr class="border-secondary">
+                <div class="d-flex align-items-center justify-content-between">
+                    <button class="btn btn-sm btn-outline-secondary" id="themeToggle">
+                        <i class="bi bi-moon-fill"></i>
+                    </button>
+                    {% if user.is_authenticated %}
+                    <span class="text-white-50 small">{{ user.username }}</span>
+                    <form method="post" action="{% url 'logout' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button class="btn btn-sm btn-outline-danger" type="submit">
+                            <i class="bi bi-box-arrow-right"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Mobile Nav -->
+            <nav class="navbar navbar-dark bg-dark d-md-none p-2">
+                <span class="navbar-brand mb-0 h6"><i class="bi bi-heart-pulse me-2"></i>CareGrid X</span>
+                <button class="btn btn-sm btn-outline-light" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu">
+                    <i class="bi bi-list"></i>
+                </button>
+            </nav>
+            <div class="offcanvas offcanvas-start bg-dark text-white d-md-none" id="mobileMenu">
+                <div class="offcanvas-header">
+                    <h5>CareGrid X</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+                </div>
+                <div class="offcanvas-body">
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link text-white" href="#" data-section="dashboard"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="#" data-section="chat"><i class="bi bi-chat-dots me-2"></i>Doctor Chat</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="#" data-section="records"><i class="bi bi-file-medical me-2"></i>Medical Records</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="#" data-section="documents"><i class="bi bi-file-earmark-text me-2"></i>Documents</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="#" data-section="conversations"><i class="bi bi-chat-square-text me-2"></i>Conversations</a></li>
+                        {% if user.is_authenticated %}
+                        <li class="nav-item mt-3">
+                            <span class="text-white-50 small">{{ user.username }}</span>
+                            <form method="post" action="{% url 'logout' %}">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-outline-danger mt-2" type="submit"><i class="bi bi-box-arrow-right me-1"></i>Logout</button>
+                            </form>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-10 main-content" id="mainContent">
+
+                <!-- Dashboard Section -->
+                <div id="section-dashboard" class="section-content">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="bi bi-speedometer2 me-2"></i>Doctor Dashboard</h2>
+                        <span class="badge bg-primary fs-6"><i class="bi bi-robot me-1"></i>AI-Powered</span>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-3 mb-3">
+                            <div class="card border-primary">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-people fs-1 text-primary"></i>
+                                    <h3 id="statPatients">-</h3>
+                                    <p class="text-muted mb-0">Patients</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card border-success">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-calendar-check fs-1 text-success"></i>
+                                    <h3 id="statAppointments">-</h3>
+                                    <p class="text-muted mb-0">Appointments</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card border-info">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-file-earmark-text fs-1 text-info"></i>
+                                    <h3 id="statDocuments">-</h3>
+                                    <p class="text-muted mb-0">Documents</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card border-warning">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-chat-square-text fs-1 text-warning"></i>
+                                    <h3 id="statConversations">-</h3>
+                                    <p class="text-muted mb-0">Conversations</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <span><i class="bi bi-lightning me-2"></i>Quick AI Actions</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-outline-primary text-start" onclick="loadPatientSummary()">
+                                            <i class="bi bi-person-lines-fill me-2"></i>AI Summary
+                                            <span class="ai-badge ms-2">AI</span>
+                                        </button>
+                                        <button class="btn btn-outline-success text-start" onclick="showUploadModal()">
+                                            <i class="bi bi-cloud-upload me-2"></i>Upload Medical Record
+                                            <span class="ai-badge ms-2">AI</span>
+                                        </button>
+                                        <button class="btn btn-outline-info text-start" onclick="navigateTo('conversations')">
+                                            <i class="bi bi-chat-square-text me-2"></i>AI Suggestions
+                                            <span class="ai-badge ms-2">AI</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header"><i class="bi bi-activity me-2"></i>Recent AI Activity</div>
+                                <div class="card-body" id="recentActivity">
+                                    <div class="empty-state">
+                                        <i class="bi bi-clock-history"></i>
+                                        <p>No recent AI activity</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Section -->
+                <div id="section-chat" class="section-content" style="display:none">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="bi bi-chat-dots me-2"></i>Doctor AI Chat</h2>
+                        <span class="badge bg-primary"><i class="bi bi-robot me-1"></i>Doctor Assistant</span>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Patient (optional)</label>
+                            <select class="form-select" id="chatPatient">
+                                <option value="">Select patient...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Conversation</label>
+                            <select class="form-select" id="chatConversation">
+                                <option value="">New conversation</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body" id="chatMessages" style="height: 400px; overflow-y: auto;">
+                            <div class="empty-state">
+                                <i class="bi bi-chat-dots"></i>
+                                <p>Start a conversation with the AI Doctor Assistant</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-2">
+                            <button class="btn btn-sm btn-outline-secondary w-100" onclick="quickAction('summarize_patient')">
+                                <i class="bi bi-person"></i> Summary
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-sm btn-outline-secondary w-100" onclick="quickAction('summarize_appointments')">
+                                <i class="bi bi-calendar"></i> Appointments
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-sm btn-outline-secondary w-100" onclick="quickAction('summarize_prescriptions')">
+                                <i class="bi bi-capsule"></i> Prescriptions
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-sm btn-outline-secondary w-100" onclick="quickAction('suggest_diagnoses')">
+                                <i class="bi bi-stethoscope"></i> Diagnoses
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-sm btn-outline-secondary w-100" onclick="quickAction('suggest_tests')">
+                                <i class="bi bi-flask"></i> Tests
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-sm btn-outline-secondary w-100" onclick="quickAction('highlight_findings')">
+                                <i class="bi bi-exclamation-triangle"></i> Findings
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="chatInput" placeholder="Ask the AI Doctor Assistant..." onkeydown="if(event.key==='Enter')sendChatMessage()">
+                        <button class="btn btn-primary" onclick="sendChatMessage()">
+                            <i class="bi bi-send"></i> Send
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="clearChat()">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    <div class="loading-spinner mt-2" id="chatLoading">
+                        <div class="d-flex align-items-center text-muted">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            <span>AI is analyzing...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Medical Records Section -->
+                <div id="section-records" class="section-content" style="display:none">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="bi bi-file-medical me-2"></i>Medical Records Analysis</h2>
+                        <span class="badge bg-info"><i class="bi bi-robot me-1"></i>Medical Records Agent</span>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Patient</label>
+                            <select class="form-select" id="recordsPatient">
+                                <option value="">Select patient...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-file-earmark-text fs-2 text-primary"></i>
+                                    <h6 class="mt-2">Extract Data</h6>
+                                    <p class="small text-muted">Extract diseases, medications, allergies, vitals</p>
+                                    <button class="btn btn-primary btn-sm w-100" onclick="showDocumentSelector('extract')">
+                                        <i class="bi bi-search"></i> Extract
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-file-text fs-2 text-success"></i>
+                                    <h6 class="mt-2">Summarize</h6>
+                                    <p class="small text-muted">Generate concise clinical summary</p>
+                                    <button class="btn btn-success btn-sm w-100" onclick="showDocumentSelector('summarize')">
+                                        <i class="bi bi-file-text"></i> Summarize
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-clipboard2-pulse fs-2 text-warning"></i>
+                                    <h6 class="mt-2">Analyze</h6>
+                                    <p class="small text-muted">Suggested diagnoses and tests</p>
+                                    <button class="btn btn-warning btn-sm w-100" onclick="showDocumentSelector('analyze')">
+                                        <i class="bi bi-graph-up"></i> Analyze
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Document Selector Modal (inline) -->
+                    <div id="documentSelector" style="display:none">
+                        <div class="card mb-3">
+                            <div class="card-header d-flex justify-content-between">
+                                <span>Select Document</span>
+                                <button class="btn-close" onclick="hideDocumentSelector()"></button>
+                            </div>
+                            <div class="card-body">
+                                <select class="form-select mb-3" id="recordsDocumentSelect">
+                                    <option value="">Select a processed document...</option>
+                                </select>
+                                <p class="small text-muted">Or paste document text directly:</p>
+                                <textarea class="form-control mb-3" id="recordsTextInput" rows="5" placeholder="Paste medical document text here..."></textarea>
+                                <button class="btn btn-primary" id="recordsActionBtn" onclick="runRecordsAction()">
+                                    <i class="bi bi-play"></i> Run Analysis
+                                </button>
+                                <div class="loading-spinner mt-2" id="recordsLoading">
+                                    <div class="d-flex align-items-center text-muted">
+                                        <div class="spinner-border spinner-border-sm me-2"></div>
+                                        <span>Analyzing document...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="recordsResult" style="display:none">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between">
+                                <span><i class="bi bi-file-text me-2"></i>Analysis Result</span>
+                                <div>
+                                    <span class="ai-badge me-2">AI Suggestion — Requires Doctor Verification</span>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="hideRecordsResult()">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="recordsResultContent" class="mb-3"></div>
+                                <div id="recordsExplanation" class="explanation-panel"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Documents Section -->
+                <div id="section-documents" class="section-content" style="display:none">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="bi bi-file-earmark-text me-2"></i>Medical Documents</h2>
+                        <button class="btn btn-primary" onclick="showUploadModal()">
+                            <i class="bi bi-cloud-upload me-1"></i> Upload
+                        </button>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Filter by Patient</label>
+                            <select class="form-select" id="documentsPatient" onchange="loadDocuments()">
+                                <option value="">All patients...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="documentsList">
+                        <div class="empty-state">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <p>No documents uploaded yet</p>
+                        </div>
+                    </div>
+                    <div class="loading-spinner mt-3" id="documentsLoading">
+                        <div class="d-flex align-items-center text-muted">
+                            <div class="spinner-border spinner-border-sm me-2"></div>
+                            <span>Loading documents...</span>
+                        </div>
+                    </div>
+
+                    <!-- Document Viewer Modal -->
+                    <div class="modal fade" id="documentViewerModal" tabindex="-1">
+                        <div class="modal-dialog modal-xl">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="docViewerTitle">Document</h5>
+                                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <ul class="nav nav-tabs mb-3" id="docViewerTabs">
+                                        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#docOriginal">Original</a></li>
+                                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#docExtracted">Extracted Text</a></li>
+                                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#docAISummary">AI Summary</a></li>
+                                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#docDiagnoses">Suggested Diagnoses</a></li>
+                                        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#docTests">Suggested Tests</a></li>
+                                    </ul>
+                                    <div class="tab-content">
+                                        <div class="tab-pane fade show active" id="docOriginal">
+                                            <div class="document-preview" id="docOriginalContent">Loading...</div>
+                                        </div>
+                                        <div class="tab-pane fade" id="docExtracted">
+                                            <div class="document-preview" id="docExtractedContent">Loading...</div>
+                                        </div>
+                                        <div class="tab-pane fade" id="docAISummary">
+                                            <div id="docAISummaryContent">Loading...</div>
+                                        </div>
+                                        <div class="tab-pane fade" id="docDiagnoses">
+                                            <div id="docDiagnosesContent">Select "Analyze" from Medical Records to get diagnoses...</div>
+                                        </div>
+                                        <div class="tab-pane fade" id="docTests">
+                                            <div id="docTestsContent">Select "Analyze" from Medical Records to get test suggestions...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conversations Section -->
+                <div id="section-conversations" class="section-content" style="display:none">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="bi bi-chat-square-text me-2"></i>AI Conversations</h2>
+                        <span class="badge bg-primary"><i class="bi bi-robot me-1"></i>AI-Powered</span>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" id="conversationSearch" placeholder="Search conversations..." oninput="loadConversations()">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="conversationAgentFilter" onchange="loadConversations()">
+                                <option value="">All agents</option>
+                                <option value="doctor">Doctor Assistant</option>
+                                <option value="medical_records">Medical Records</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="conversationsList"></div>
+                    <div class="loading-spinner mt-3" id="conversationsLoading">
+                        <div class="d-flex align-items-center text-muted">
+                            <div class="spinner-border spinner-border-sm me-2"></div>
+                            <span>Loading conversations...</span>
+                        </div>
+                    </div>
+                    <nav id="conversationPagination" class="mt-3"></nav>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="modal fade" id="uploadModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-cloud-upload me-2"></i>Upload Medical Record</h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Patient <span class="text-danger">*</span></label>
+                        <select class="form-select" id="uploadPatient"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">File <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="uploadFile" accept=".pdf,.docx,.txt">
+                        <div class="form-text">Supported: PDF, DOCX, TXT (max 10MB)</div>
+                    </div>
+                    <div class="loading-spinner" id="uploadLoading">
+                        <div class="d-flex align-items-center text-muted">
+                            <div class="spinner-border spinner-border-sm me-2"></div>
+                            <span>Uploading and processing...</span>
+                        </div>
+                    </div>
+                    <div id="uploadResult" class="mt-3" style="display:none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-primary" onclick="uploadDocument()">
+                        <i class="bi bi-cloud-upload"></i> Upload
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmTitle">Confirm</h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="confirmBody">Are you sure?</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-danger" id="confirmBtn" onclick="executeConfirm()">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // State
+        let currentSection = 'dashboard';
+        let currentConversationId = null;
+        let chatHistory = [];
+        let patientCache = [];
+        let documentCache = [];
+        let pendingConfirmAction = null;
+        let recordsActionType = 'extract';
+
+        // Theme
+        const savedTheme = localStorage.getItem('caregrid-theme') || 'light';
+        document.documentElement.setAttribute('data-bs-theme', savedTheme);
+        document.getElementById('themeToggle').innerHTML = savedTheme === 'dark' ? '<i class="bi bi-sun-fill"></i>' : '<i class="bi bi-moon-fill"></i>';
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-bs-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-bs-theme', next);
+            localStorage.setItem('caregrid-theme', next);
+            document.getElementById('themeToggle').innerHTML = next === 'dark' ? '<i class="bi bi-sun-fill"></i>' : '<i class="bi bi-moon-fill"></i>';
+        });
+
+        // Navigation
+        document.querySelectorAll('[data-section]').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                navigateTo(el.dataset.section);
+                const offcanvas = document.getElementById('mobileMenu');
+                const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvas);
+                if (bsOffcanvas) bsOffcanvas.hide();
+            });
+        });
+
+        function navigateTo(section) {
+            document.querySelectorAll('.section-content').forEach(s => s.style.display = 'none');
+            document.getElementById('section-' + section).style.display = 'block';
+            document.querySelectorAll('[data-section]').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll(`[data-section="${section}"]`).forEach(s => s.classList.add('active'));
+            currentSection = section;
+            if (section === 'dashboard') loadDashboardStats();
+            if (section === 'conversations') loadConversations();
+            if (section === 'documents') loadDocuments();
+            if (section === 'chat') loadPatientsForSelect('chatPatient');
+            if (section === 'records') loadPatientsForSelect('recordsPatient');
+        }
+
+        // Toast notifications
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-bg-${type} border-0 show`;
+            toast.role = 'alert';
+            toast.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        function showError(message) {
+            showToast(message, 'danger');
+        }
+
+        // API helpers
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie) {
+                const cookies = document.cookie.split(';');
+                for (let c of cookies) {
+                    c = c.trim();
+                    if (c.startsWith(name + '=')) {
+                        cookieValue = decodeURIComponent(c.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const csrf = getCookie('csrftoken');
+
+        async function apiPost(url, data) {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+                body: JSON.stringify(data),
+                credentials: 'same-origin',
+            });
+            return resp.json();
+        }
+
+        async function apiGet(url) {
+            const resp = await fetch(url, { credentials: 'same-origin' });
+            return resp.json();
+        }
+
+        async function apiUpload(url, formData) {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf },
+                body: formData,
+                credentials: 'same-origin',
+            });
+            return resp.json();
+        }
+
+        async function apiDelete(url) {
+            const resp = await fetch(url, {
+                method: 'DELETE',
+                headers: { 'X-CSRFToken': csrf },
+                credentials: 'same-origin',
+            });
+            return resp.json();
+        }
+
+        // Dashboard
+        async function loadDashboardStats() {
+            try {
+                const data = await apiGet('/api/dashboard_stats/');
+                document.getElementById('statPatients').textContent = data.patients || '-';
+                document.getElementById('statAppointments').textContent = data.appointments || '-';
+                document.getElementById('statDocuments').textContent = data.documents || '-';
+                document.getElementById('statConversations').textContent = data.conversations || '-';
+            } catch (e) {
+                console.error('Dashboard stats error:', e);
+            }
+            try {
+                const convData = await apiGet('/api/v1/ai/conversations?page_size=5');
+                const container = document.getElementById('recentActivity');
+                if (convData.conversations && convData.conversations.length > 0) {
+                    container.innerHTML = convData.conversations.map(c => `
+                        <div class="d-flex align-items-center mb-2 p-2 border rounded">
+                            <i class="bi bi-chat-dots me-2 text-primary"></i>
+                            <div class="flex-grow-1">
+                                <small class="d-block text-truncate">${c.title || 'Conversation'}</small>
+                                <small class="text-muted">${c.agent_type} · ${new Date(c.created_at).toLocaleDateString()}</small>
+                            </div>
+                            <span class="agent-badge ${c.agent_type}">${c.agent_type}</span>
+                        </div>
+                    `).join('');
+                }
+                const docsData = await apiGet('/api/v1/ai/documents');
+                if (docsData.documents) document.getElementById('statDocuments').textContent = docsData.documents.length;
+                if (convData.total) document.getElementById('statConversations').textContent = convData.total;
+            } catch (e) { console.error(e); }
+        }
+
+        // Chat
+        async function loadPatientsForSelect(selectId) {
+            if (patientCache.length > 0) {
+                populatePatientSelect(selectId);
+                return;
+            }
+            try {
+                const data = await apiGet('/api/patients/');
+                if (data.patients) patientCache = data.patients;
+                else if (Array.isArray(data)) patientCache = data;
+            } catch (e) {
+                try {
+                    const data = await apiGet('/api/patients/search/');
+                    if (data.patients) patientCache = data.patients;
+                } catch (e2) { console.error(e2); }
+            }
+            populatePatientSelect(selectId);
+        }
+
+        function populatePatientSelect(selectId) {
+            const sel = document.getElementById(selectId);
+            if (!sel) return;
+            sel.innerHTML = '<option value="">Select patient...</option>' +
+                patientCache.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            const otherSelects = ['chatPatient', 'recordsPatient', 'uploadPatient', 'documentsPatient'];
+            otherSelects.forEach(id => {
+                if (id !== selectId) {
+                    const other = document.getElementById(id);
+                    if (other && other.options.length <= 1) {
+                        other.innerHTML = sel.innerHTML;
+                    }
+                }
+            });
+        }
+
+        async function loadConversationsForSelect() {
+            try {
+                const data = await apiGet('/api/v1/ai/conversations?page_size=50');
+                const sel = document.getElementById('chatConversation');
+                sel.innerHTML = '<option value="">New conversation</option>';
+                if (data.conversations) {
+                    data.conversations.forEach(c => {
+                        sel.innerHTML += `<option value="${c.id}">${c.title || c.id.slice(0,8)} (${c.agent_type})</option>`;
+                    });
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const patientId = document.getElementById('chatPatient').value;
+            const convId = document.getElementById('chatConversation').value;
+
+            addChatMessage('user', message);
+            input.value = '';
+            document.getElementById('chatLoading').classList.add('active');
+
+            try {
+                const data = await apiPost('/api/v1/ai/doctor/chat', {
+                    message: message,
+                    patient_id: patientId ? parseInt(patientId) : null,
+                    conversation_id: convId || null,
+                });
+
+                document.getElementById('chatLoading').classList.remove('active');
+
+                if (data && data.response) {
+                    addChatMessage('assistant', data.response, data.explanation);
+                    currentConversationId = data.conversation_id;
+                    if (!convId) {
+                        document.getElementById('chatConversation').innerHTML +=
+                            `<option value="${data.conversation_id}" selected>${message.slice(0,50)}</option>`;
+                    }
+                } else if (data && data.error) {
+                    addChatMessage('assistant', 'Error: ' + data.error);
+                }
+            } catch (e) {
+                document.getElementById('chatLoading').classList.remove('active');
+                addChatMessage('assistant', 'Error: Could not reach the AI service');
+            }
+        }
+
+        function addChatMessage(role, content, explanation) {
+            const container = document.getElementById('chatMessages');
+            const emptyState = container.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+
+            const formattedContent = content.replace(/\n/g, '<br>');
+            let html = `<div class="chat-message ${role}"><div class="message-content">${formattedContent}</div>`;
+
+            if (explanation) {
+                html += `<div class="explanation-panel">
+                    <h6>Reasoning</h6><p class="mb-2">${explanation.reasoning || 'AI analysis'}</p>
+                    <h6>Confidence</h6><p class="mb-2">${explanation.confidence || 'N/A'}</p>
+                    <h6>Medical Disclaimer</h6><p class="mb-2 text-danger">${explanation.disclaimer || 'AI Suggestion — Requires Doctor Verification'}</p>
+                    <h6>Recommended Follow-up</h6><p class="mb-0">${explanation.follow_up || 'Review before clinical action.'}</p>
+                </div>`;
+            }
+
+            html += '</div>';
+            container.innerHTML += html;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearChat() {
+            document.getElementById('chatMessages').innerHTML =
+                '<div class="empty-state"><i class="bi bi-chat-dots"></i><p>Start a conversation with the AI Doctor Assistant</p></div>';
+            currentConversationId = null;
+        }
+
+        async function quickAction(action) {
+            const patientId = document.getElementById('chatPatient').value;
+            if (!patientId) {
+                showError('Please select a patient first');
+                return;
+            }
+
+            const actionMessages = {
+                'summarize_patient': 'Please provide a comprehensive patient summary.',
+                'summarize_appointments': 'Please summarize the patient\'s appointments.',
+                'summarize_prescriptions': 'Please summarize the patient\'s prescriptions.',
+                'suggest_diagnoses': 'Please suggest possible diagnoses.',
+                'suggest_tests': 'Please suggest follow-up tests.',
+                'highlight_findings': 'Please highlight abnormal findings.',
+            };
+
+            const message = actionMessages[action] || action;
+            document.getElementById('chatInput').value = message;
+            await sendChatMessage();
+        }
+
+        // Document Upload
+        function showUploadModal() {
+            loadPatientsForSelect('uploadPatient');
+            document.getElementById('uploadResult').style.display = 'none';
+            document.getElementById('uploadFile').value = '';
+            new bootstrap.Modal(document.getElementById('uploadModal')).show();
+        }
+
+        async function uploadDocument() {
+            const fileInput = document.getElementById('uploadFile');
+            const patientId = document.getElementById('uploadPatient').value;
+
+            if (!fileInput.files[0]) { showError('Please select a file'); return; }
+            if (!patientId) { showError('Please select a patient'); return; }
+
+            document.getElementById('uploadLoading').classList.add('active');
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('patient_id', patientId);
+
+            try {
+                const result = await apiUpload('/api/v1/ai/upload-document', formData);
+                document.getElementById('uploadLoading').classList.remove('active');
+
+                const resultDiv = document.getElementById('uploadResult');
+                resultDiv.style.display = 'block';
+
+                if (result && !result.error) {
+                    resultDiv.className = 'alert alert-success';
+                    resultDiv.innerHTML = `
+                        <strong>Upload successful!</strong><br>
+                        Document: ${result.original_filename}<br>
+                        Status: ${result.processing_status}<br>
+                        <button class="btn btn-sm btn-primary mt-2" onclick="navigateTo('documents')">View Documents</button>
+                    `;
+                    document.getElementById('uploadFile').value = '';
+                } else {
+                    resultDiv.className = 'alert alert-danger';
+                    resultDiv.innerHTML = `<strong>Upload failed:</strong> ${result.error || 'Unknown error'}`;
+                }
+            } catch (e) {
+                document.getElementById('uploadLoading').classList.remove('active');
+                showError('Upload failed: ' + e.message);
+            }
+        }
+
+        // Documents
+        async function loadDocuments() {
+            document.getElementById('documentsLoading').classList.add('active');
+            const patientId = document.getElementById('documentsPatient').value;
+            let url = '/api/v1/ai/documents';
+            if (patientId) url += '?patient_id=' + patientId;
+
+            try {
+                const data = await apiGet(url);
+                const container = document.getElementById('documentsList');
+                document.getElementById('documentsLoading').classList.remove('active');
+
+                if (!data.documents || data.documents.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><i class="bi bi-file-earmark-text"></i><p>No documents uploaded yet</p></div>';
+                    return;
+                }
+
+                container.innerHTML = '<div class="row">' + data.documents.map(d => `
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="card-title text-truncate">${d.original_filename}</h6>
+                                    <span class="badge ${d.processing_status === 'completed' ? 'bg-success' : d.processing_status === 'failed' ? 'bg-danger' : 'bg-warning'}">${d.processing_status}</span>
+                                </div>
+                                <p class="small text-muted mb-2">
+                                    <i class="bi bi-file-earmark-${d.file_type} me-1"></i>${d.file_type.toUpperCase()}
+                                    · ${(d.file_size / 1024).toFixed(1)} KB
+                                    · ${new Date(d.created_at).toLocaleDateString()}
+                                </p>
+                                ${d.processing_status === 'completed' ? `
+                                <button class="btn btn-sm btn-outline-primary w-100" onclick="viewDocument('${d.id}')">
+                                    <i class="bi bi-eye"></i> View
+                                </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('') + '</div>';
+            } catch (e) {
+                document.getElementById('documentsLoading').classList.remove('active');
+                showError('Failed to load documents');
+            }
+        }
+
+        async function viewDocument(docId) {
+            try {
+                const data = await apiGet(`/api/v1/ai/documents/${docId}`);
+                document.getElementById('docViewerTitle').textContent = data.original_filename || 'Document';
+                document.getElementById('docOriginalContent').textContent = 'Original file: ' + (data.original_filename || 'Unknown');
+                document.getElementById('docExtractedContent').textContent = data.extracted_text || 'No extracted text available';
+                document.getElementById('docAISummaryContent').innerHTML =
+                    '<div class="empty-state"><i class="bi bi-file-text"></i><p>Select "Summarize" or "Analyze" from Medical Records to generate AI content</p></div>';
+                document.getElementById('docDiagnosesContent').innerHTML =
+                    '<div class="empty-state"><i class="bi bi-stethoscope"></i><p>Use Medical Records Agent to analyze this document</p></div>';
+                document.getElementById('docTestsContent').innerHTML =
+                    '<div class="empty-state"><i class="bi bi-flask"></i><p>Use Medical Records Agent to analyze this document</p></div>';
+                new bootstrap.Modal(document.getElementById('documentViewerModal')).show();
+            } catch (e) {
+                showError('Failed to load document details');
+            }
+        }
+
+        // Medical Records Agent
+        function showDocumentSelector(action) {
+            recordsActionType = action;
+            document.getElementById('documentSelector').style.display = 'block';
+            document.getElementById('recordsActionBtn').innerHTML = `<i class="bi bi-play"></i> ${action.charAt(0).toUpperCase() + action.slice(1)}`;
+            document.getElementById('recordsResult').style.display = 'none';
+            loadDocumentsForSelect();
+        }
+
+        function hideDocumentSelector() {
+            document.getElementById('documentSelector').style.display = 'none';
+        }
+
+        function hideRecordsResult() {
+            document.getElementById('recordsResult').style.display = 'none';
+        }
+
+        async function loadDocumentsForSelect() {
+            try {
+                const data = await apiGet('/api/v1/ai/documents');
+                const sel = document.getElementById('recordsDocumentSelect');
+                sel.innerHTML = '<option value="">Select a processed document...</option>';
+                if (data.documents) {
+                    data.documents.filter(d => d.processing_status === 'completed').forEach(d => {
+                        sel.innerHTML += `<option value="${d.id}">${d.original_filename}</option>`;
+                    });
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function runRecordsAction() {
+            const patientId = document.getElementById('recordsPatient').value;
+            const docSelect = document.getElementById('recordsDocumentSelect');
+            const textInput = document.getElementById('recordsTextInput');
+
+            if (!patientId) { showError('Please select a patient'); return; }
+
+            let documentText = textInput.value.trim();
+            let filename = '';
+
+            if (docSelect.value) {
+                try {
+                    const docData = await apiGet(`/api/v1/ai/documents/${docSelect.value}`);
+                    documentText = docData.extracted_text || '';
+                    filename = docData.original_filename || '';
+                } catch (e) { showError('Failed to load document'); return; }
+            }
+
+            if (!documentText) { showError('Please select a document or paste text'); return; }
+
+            document.getElementById('recordsLoading').classList.add('active');
+
+            try {
+                const data = await apiPost('/api/v1/ai/medical-records/chat', {
+                    action: recordsActionType,
+                    document_text: documentText,
+                    filename: filename,
+                    patient_id: parseInt(patientId),
+                });
+
+                document.getElementById('recordsLoading').classList.remove('active');
+
+                if (data && !data.error) {
+                    const container = document.getElementById('recordsResultContent');
+                    const formatted = (data.response || '').replace(/\n/g, '<br>');
+                    container.innerHTML = formatted;
+
+                    const explanation = document.getElementById('recordsExplanation');
+                    if (data.explanation) {
+                        explanation.innerHTML = `
+                            <h6>Reasoning</h6><p class="mb-2">${data.explanation.reasoning || 'AI analysis'}</p>
+                            <h6>Confidence</h6><p class="mb-2">${data.explanation.confidence || 'N/A'}</p>
+                            <h6>Medical Disclaimer</h6><p class="mb-2 text-danger">${data.explanation.disclaimer || 'AI Suggestion — Requires Doctor Verification'}</p>
+                            <h6>Recommended Follow-up</h6><p class="mb-0">${data.explanation.follow_up || 'Review before clinical action.'}</p>
+                        `;
+                    } else {
+                        explanation.innerHTML = '<p class="text-danger">AI Suggestion — Requires Doctor Verification</p>';
+                    }
+
+                    document.getElementById('recordsResult').style.display = 'block';
+                    showToast(`${recordsActionType.charAt(0).toUpperCase() + recordsActionType.slice(1)} complete`);
+                } else {
+                    showError(data.error || 'Analysis failed');
+                }
+            } catch (e) {
+                document.getElementById('recordsLoading').classList.remove('active');
+                showError('Analysis failed: ' + e.message);
+            }
+        }
+
+        // Conversations
+        let currentPage = 1;
+
+        async function loadConversations() {
+            document.getElementById('conversationsLoading').classList.add('active');
+            const search = document.getElementById('conversationSearch').value;
+            const agentType = document.getElementById('conversationAgentFilter').value;
+
+            try {
+                let url = `/api/v1/ai/conversations?page=${currentPage}&page_size=10`;
+                if (search) url += '&search=' + encodeURIComponent(search);
+                if (agentType) url += '&agent_type=' + agentType;
+
+                const data = await apiGet(url);
+                const container = document.getElementById('conversationsList');
+                document.getElementById('conversationsLoading').classList.remove('active');
+
+                if (!data.conversations || data.conversations.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><i class="bi bi-chat-square-text"></i><p>No conversations found</p></div>';
+                    document.getElementById('conversationPagination').innerHTML = '';
+                    return;
+                }
+
+                container.innerHTML = data.conversations.map(c => `
+                    <div class="card mb-2 conversation-item">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1" style="cursor:pointer" onclick="continueConversation('${c.id}', '${c.agent_type}')">
+                                    <div class="d-flex align-items-center">
+                                        <strong class="me-2">${c.title || 'Conversation'}</strong>
+                                        <span class="agent-badge ${c.agent_type}">${c.agent_type}</span>
+                                    </div>
+                                    <small class="text-muted">
+                                        ${c.patient_name ? 'Patient: ' + c.patient_name + ' · ' : ''}
+                                        ${new Date(c.created_at).toLocaleString()}
+                                        · ${c.message_count || 0} messages
+                                    </small>
+                                </div>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();continueConversation('${c.id}', '${c.agent_type}')">
+                                        <i class="bi bi-chat"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation();confirmDeleteConversation('${c.id}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Pagination
+                const totalPages = Math.ceil(data.total / 10);
+                let paginationHtml = '<ul class="pagination pagination-sm justify-content-center">';
+                if (currentPage > 1) {
+                    paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${currentPage-1})">Previous</a></li>`;
+                }
+                for (let i = Math.max(1, currentPage-2); i <= Math.min(totalPages, currentPage+2); i++) {
+                    paginationHtml += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="changePage(${i})">${i}</a></li>`;
+                }
+                if (currentPage < totalPages) {
+                    paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${currentPage+1})">Next</a></li>`;
+                }
+                paginationHtml += '</ul>';
+                document.getElementById('conversationPagination').innerHTML = paginationHtml;
+
+            } catch (e) {
+                document.getElementById('conversationsLoading').classList.remove('active');
+                showError('Failed to load conversations');
+            }
+        }
+
+        function changePage(page) {
+            currentPage = page;
+            loadConversations();
+        }
+
+        async function continueConversation(convId, agentType) {
+            try {
+                const data = await apiGet(`/api/v1/ai/history/${convId}`);
+                if (agentType === 'medical_records') {
+                    navigateTo('records');
+                    showToast('Conversation loaded in Medical Records');
+                } else {
+                    navigateTo('chat');
+                    document.getElementById('chatConversation').value = convId;
+                    if (data.messages) {
+                        document.getElementById('chatMessages').innerHTML = '';
+                        data.messages.forEach(m => {
+                            addChatMessage(m.role, m.content);
+                        });
+                    }
+                    if (data.patient_id) {
+                        document.getElementById('chatPatient').value = data.patient_id;
+                    }
+                    currentConversationId = convId;
+                }
+            } catch (e) {
+                showError('Failed to load conversation');
+            }
+        }
+
+        function confirmDeleteConversation(convId) {
+            document.getElementById('confirmTitle').textContent = 'Delete Conversation';
+            document.getElementById('confirmBody').textContent = 'Are you sure you want to delete this conversation? This action cannot be undone.';
+            pendingConfirmAction = async () => {
+                try {
+                    await apiDelete(`/api/v1/ai/history/${convId}`);
+                    showToast('Conversation deleted');
+                    loadConversations();
+                } catch (e) {
+                    showError('Failed to delete conversation');
+                }
+            };
+            new bootstrap.Modal(document.getElementById('confirmModal')).show();
+        }
+
+        function executeConfirm() {
+            if (pendingConfirmAction) {
+                pendingConfirmAction();
+                pendingConfirmAction = null;
+            }
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+        }
+
+        // Load patients for summary modal
+        async function loadPatientSummary() {
+            // Navigate to chat with a summary prompt if patient selected
+            if (patientCache.length === 0) await loadPatientsForSelect('chatPatient');
+            const sel = document.getElementById('chatPatient');
+            if (sel.options.length > 1) {
+                sel.value = sel.options[1].value;
+                navigateTo('chat');
+                document.getElementById('chatInput').value = 'Please provide a comprehensive patient summary.';
+                setTimeout(() => sendChatMessage(), 500);
+            } else {
+                showError('No patients available. Please create a patient first.');
+            }
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboardStats();
+            loadPatientsForSelect('chatPatient');
+            loadConversationsForSelect();
+        });
+    </script>
+</body>
+</html>

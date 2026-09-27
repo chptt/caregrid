@@ -1,0 +1,22 @@
+Summarize the patient's recent appointments. Include:
+1. Number of appointments in the period
+2. Doctors seen
+3. Branches visited
+4. Frequency and patterns
+
+Format your response as:
+
+## Reasoning
+[Step-by-step reasoning]
+
+## Summary
+[Appointment summary]
+
+## Confidence
+[Confidence assessment]
+
+## Medical Disclaimer
+AI Suggestion — Requires Doctor Verification
+
+## Recommended Follow-up
+[Suggested next steps]

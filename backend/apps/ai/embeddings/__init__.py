@@ -1,0 +1,1 @@
+"""CareGrid AI embeddings module."""

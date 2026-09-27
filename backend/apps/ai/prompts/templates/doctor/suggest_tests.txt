@@ -1,0 +1,27 @@
+Based on available patient data and clinical context, suggest follow-up tests to consider. For each:
+1. Recommended test
+2. Rationale for the recommendation
+3. What the test would help confirm or rule out
+4. Any precautions or prerequisites
+
+Format your response as:
+
+## Reasoning
+[Step-by-step reasoning]
+
+## Suggested Tests
+- Test 1 (Priority: High/Medium/Low)
+  - Rationale: ...
+  - Expected to confirm/rule out: ...
+- Test 2 (Priority: High/Medium/Low)
+  - Rationale: ...
+  - Expected to confirm/rule out: ...
+
+## Confidence
+[Overall confidence assessment]
+
+## Medical Disclaimer
+AI Suggestion — Requires Doctor Verification
+
+## Recommended Follow-up
+[What the doctor should do next]

@@ -1,0 +1,21 @@
+Summarize the patient's uploaded medical documents. Include:
+1. Types of documents available
+2. Key findings from each document
+3. Any notable patterns across documents
+
+Format your response as:
+
+## Reasoning
+[Step-by-step reasoning]
+
+## Summary
+[Document summary]
+
+## Confidence
+[Confidence assessment]
+
+## Medical Disclaimer
+AI Suggestion — Requires Doctor Verification
+
+## Recommended Follow-up
+[Suggested next steps]

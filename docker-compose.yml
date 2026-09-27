@@ -15,51 +15,6 @@ services:
     networks:
       - caregrid_network
 
-  hardhat:
-    image: node:18-alpine
-    container_name: caregrid_hardhat
-    working_dir: /app
-    ports:
-      - "8545:8545"
-    volumes:
-      - ./caregrid_chain:/app
-      - hardhat_data:/app/node_modules
-    command: >
-      sh -c "
-        npm install &&
-        npx hardhat node --hostname 0.0.0.0
-      "
-    environment:
-      - NODE_ENV=development
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8545"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - caregrid_network
-
-  deploy-contracts:
-    image: node:18-alpine
-    container_name: caregrid_deploy
-    working_dir: /app
-    volumes:
-      - ./caregrid_chain:/app
-      - hardhat_data:/app/node_modules
-    command: >
-      sh -c "
-        npm install &&
-        sleep 30 &&
-        npx hardhat run scripts/deploy-all.ts --network localhost
-      "
-    depends_on:
-      hardhat:
-        condition: service_healthy
-    networks:
-      - caregrid_network
-    restart: "no"
-
   django:
     build:
       context: .
@@ -69,28 +24,24 @@ services:
       - "8000:8000"
     volumes:
       - ./logs:/app/logs
-      - ./caregrid_chain/deployments:/app/caregrid_chain/deployments:ro
+      - ./media:/app/media
+      - ./ai_uploads:/app/ai_uploads
     environment:
       - DJANGO_SETTINGS_MODULE=caregrid.settings
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - BLOCKCHAIN_PROVIDER_URL=http://hardhat:8545
-      - DEBUG=False
+      - DEBUG=True
       - ALLOWED_HOSTS=localhost,127.0.0.1,django
-      - DJANGO_SECRET_KEY=change-me-in-production
+      - DJANGO_SECRET_KEY=dev-secret-key-change-in-production
     depends_on:
       redis:
         condition: service_healthy
-      hardhat:
-        condition: service_healthy
-      deploy-contracts:
-        condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 30s
     networks:
       - caregrid_network
     restart: unless-stopped
@@ -100,18 +51,13 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: caregrid_migrate
+    command: sh -c "python manage.py migrate --noinput"
     volumes:
       - ./logs:/app/logs
     environment:
       - DJANGO_SETTINGS_MODULE=caregrid.settings
       - REDIS_HOST=redis
-      - BLOCKCHAIN_PROVIDER_URL=http://hardhat:8545
-      - DEBUG=False
-    command: >
-      sh -c "
-        python manage.py makemigrations &&
-        python manage.py migrate
-      "
+      - DEBUG=True
     depends_on:
       redis:
         condition: service_healthy
@@ -121,13 +67,7 @@ services:
 
 volumes:
   redis_data:
-    driver: local
-  hardhat_data:
-    driver: local
 
 networks:
   caregrid_network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16

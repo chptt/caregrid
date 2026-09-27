@@ -1,10 +1,23 @@
 from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render
 from django.utils import timezone
 from core.models import Patient, Doctor, Appointment
 from core.ip_tracker import track_login_attempt
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from rest_framework.views import exception_handler as drf_exception_handler
 from .rate_limiting import rate_limit, get_rate_limit_status
+
+
+def api_exception_handler(exc, context):
+    response = drf_exception_handler(exc, context)
+    if response is not None:
+        custom_data = {
+            'status': 'error',
+            'error': response.data.get('detail', str(exc)),
+        }
+        response.data = custom_data
+    return response
 
 
 _access_control_contract = None
@@ -26,7 +39,9 @@ def login_view(request):
     return Response({"message": "Login view placeholder"})
 
 def home(request):
-    return HttpResponse("Welcome to CareGrid API")
+    if request.user.is_authenticated:
+        return render(request, 'dashboard.html')
+    return render(request, 'login.html')
 
 @rate_limit(limit_unauthenticated=50, limit_authenticated=200)  # Custom rate limits
 def dashboard_stats(request):

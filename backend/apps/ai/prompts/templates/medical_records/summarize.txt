@@ -1,0 +1,27 @@
+Generate a concise clinical summary of the following medical document.
+
+Document: {filename}
+
+{document_text}
+
+Return your response in this EXACT FORMAT:
+
+## Reasoning
+[Step-by-step reasoning for your summary]
+
+## Summary
+[2-3 paragraph clinical summary covering the key findings]
+
+## Key Findings
+- Finding 1 (Confidence: XX%)
+- Finding 2 (Confidence: XX%)
+- Finding 3 (Confidence: XX%)
+
+## Confidence
+Overall confidence: XX%
+
+## Medical Disclaimer
+AI Suggestion — Requires Doctor Verification. This is an AI-generated summary and has not been reviewed by a clinician.
+
+## Recommended Follow-up
+[What the doctor should do next]

@@ -1,7 +1,0 @@
-Based on the following patient information, provide a comprehensive summary of the patient's medical history. Include:
-1. Key demographics (age, gender)
-2. Recent appointment history and patterns
-3. Any recurring conditions or concerns
-4. Recommended areas for follow-up
-
-Present the summary in a clear, organized format suitable for clinical review. Flag any areas that may need attention.

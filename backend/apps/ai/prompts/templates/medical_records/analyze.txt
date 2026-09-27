@@ -1,0 +1,33 @@
+Analyze the following medical document and provide suggested diagnoses and recommended tests.
+
+Document: {filename}
+
+{document_text}
+
+Return your response in this EXACT FORMAT:
+
+## Reasoning
+[Step-by-step diagnostic reasoning based on the document content]
+
+## Suggested Diagnoses
+1. Diagnosis name (Confidence: XX%)
+   - Supporting evidence: ...
+   - Recommended verification: ...
+2. Diagnosis name (Confidence: XX%)
+   - Supporting evidence: ...
+   - Recommended verification: ...
+
+## Suggested Tests
+1. Test name (Priority: High/Medium/Low)
+   - Rationale: ...
+2. Test name (Priority: High/Medium/Low)
+   - Rationale: ...
+
+## Confidence
+Overall confidence: XX%
+
+## Medical Disclaimer
+AI Suggestion — Requires Doctor Verification. This is an AI-generated analysis and has not been reviewed by a clinician. All diagnoses and test recommendations must be verified by a licensed physician.
+
+## Recommended Follow-up
+[What the doctor should do next, which specialist to consult]

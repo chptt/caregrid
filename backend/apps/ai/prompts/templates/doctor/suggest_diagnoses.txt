@@ -1,0 +1,29 @@
+Based on available patient data, suggest possible diagnoses to consider. For each:
+1. List the potential diagnosis
+2. Explain the supporting evidence from patient data
+3. Note any conflicting information
+4. Suggest what additional information would help confirm or rule out
+
+Important: Present as differential diagnoses for the doctor to evaluate. Never state as definitive.
+
+Format your response as:
+
+## Reasoning
+[Step-by-step diagnostic reasoning]
+
+## Suggested Diagnoses
+- Diagnosis 1 (Confidence: X%)
+  - Evidence: ...
+  - Verification needed: ...
+- Diagnosis 2 (Confidence: X%)
+  - Evidence: ...
+  - Verification needed: ...
+
+## Confidence
+[Overall confidence assessment]
+
+## Medical Disclaimer
+AI Suggestion — Requires Doctor Verification
+
+## Recommended Follow-up
+[What the doctor should do next]
