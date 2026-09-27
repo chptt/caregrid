@@ -11,7 +11,14 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple
 from collections import defaultdict, Counter
 from dataclasses import dataclass
-from web3 import Web3
+
+# Lazy import — web3 is not installed on Vercel
+try:
+    from web3 import Web3
+    _WEB3_AVAILABLE = True
+except ImportError:
+    Web3 = None  # type: ignore
+    _WEB3_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +164,7 @@ class AnomalyDetector:
             metadata = {
                 'endpoint': pattern.endpoint,
                 'method': pattern.method,
-                'user_agent_hash': Web3.keccak(text=pattern.user_agent).hex()[:16],
+                'user_agent_hash': self._keccak(pattern.user_agent)[:16],
                 'first_seen': pattern.timestamp.isoformat()
             }
             
@@ -169,25 +176,30 @@ class AnomalyDetector:
         except Exception as e:
             logger.error(f"Error tracking pattern for {ip_address}: {e}")
     
+    def _keccak(self, text: str) -> str:
+        """Hash helper — uses web3.Web3.keccak when available, SHA-256 otherwise."""
+        if _WEB3_AVAILABLE and Web3 is not None:
+            return Web3.keccak(text=text).hex()
+        import hashlib
+        return hashlib.sha256(text.encode()).hexdigest()
+
     def _generate_pattern_signature(self, pattern: RequestPattern) -> str:
         """
         Generate a signature hash for a request pattern.
-        
+
         Args:
             pattern: Request pattern
-            
+
         Returns:
             Pattern signature hash
         """
-        # Create signature from key pattern characteristics
         signature_data = {
             'endpoint': pattern.endpoint,
             'method': pattern.method,
-            'user_agent_hash': Web3.keccak(text=pattern.user_agent).hex()[:16]
+            'user_agent_hash': self._keccak(pattern.user_agent)[:16],
         }
-        
         signature_string = json.dumps(signature_data, sort_keys=True)
-        return Web3.keccak(text=signature_string).hex()
+        return self._keccak(signature_string)
     
     def _detect_coordinated_attack(self, current_pattern: RequestPattern) -> Optional[AttackSignature]:
         """

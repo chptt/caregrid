@@ -1,0 +1,35 @@
+# CareGrid — Vercel deployment dependencies
+#
+# Heavy packages excluded from the full requirements.txt:
+#   faiss-cpu          — requires native BLAS, 200+ MB, won't fit 50 MB lambda
+#   sentence-transformers — pulls torch (~1 GB), incompatible with Vercel
+#   web3               — large, blockchain is offline-mode on Vercel
+#   eth-tester         — test only
+#   py-solc-x          — test/dev only
+#   gunicorn           — not needed; Vercel uses its own runner
+#   psycopg2-binary    — no PostgreSQL on Vercel
+#   redis / django-redis — no Redis on Vercel (uses LocMemCache)
+#   hypothesis / pytest* / fakeredis — test only
+#   argon2-cffi        — excluded; PBKDF2 used instead
+
+# Django core
+Django==5.2.7
+djangorestframework==3.15.2
+django-cors-headers==4.6.0
+
+# Static files
+whitenoise==6.8.2
+
+# AI / LLM  (OpenAI only — no local models)
+openai>=1.30.0
+tiktoken>=0.7.0
+
+# Document processing
+PyPDF2>=3.0.0
+python-docx>=1.1.0
+
+# Embeddings — OpenAI only (sentence-transformers excluded)
+numpy>=1.26.0
+
+# Utilities
+python-dotenv==1.0.1

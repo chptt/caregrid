@@ -8,7 +8,14 @@ import logging
 import math
 from typing import Dict, List, Optional, Tuple, Any
 
-import redis
+# Lazy import — redis is not installed on Vercel
+try:
+    import redis as _redis_module
+    _REDIS_AVAILABLE = True
+except ImportError:
+    _redis_module = None  # type: ignore
+    _REDIS_AVAILABLE = False
+
 from django.conf import settings
 from django.http import HttpRequest
 
@@ -33,12 +40,20 @@ class ThreatScoreCalculator:
         """
         # Initialize Redis client
         if redis_client is None:
-            self.redis = redis.Redis(
-                host=settings.REDIS_HOST,
-                port=settings.REDIS_PORT,
-                db=settings.REDIS_DB,
-                decode_responses=True
-            )
+            if _REDIS_AVAILABLE:
+                try:
+                    self.redis = _redis_module.Redis(
+                        host=getattr(settings, 'REDIS_HOST', 'localhost'),
+                        port=getattr(settings, 'REDIS_PORT', 6379),
+                        db=getattr(settings, 'REDIS_DB', 0),
+                        decode_responses=True,
+                        socket_connect_timeout=2,
+                    )
+                    self.redis.ping()
+                except Exception:
+                    self.redis = None
+            else:
+                self.redis = None
         else:
             self.redis = redis_client
         

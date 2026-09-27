@@ -7,7 +7,7 @@ import sys
 import django
 
 # Setup Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'caregrid.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'caregrid.settings.base')
 django.setup()
 
 from core.models import Branch, Doctor

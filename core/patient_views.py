@@ -5,7 +5,6 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.utils import timezone
-from web3 import Web3
 import logging
 
 from .models import Patient, Branch
@@ -85,7 +84,12 @@ def register_patient(request):
             
             # Register on blockchain
             blockchain_service = BlockchainService()
-            patient_id_hash = Web3.keccak(text=blockchain_id)
+            try:
+                from web3 import Web3
+                patient_id_hash = Web3.keccak(text=blockchain_id)
+            except ImportError:
+                import hashlib
+                patient_id_hash = bytes.fromhex(hashlib.sha256(blockchain_id.encode()).hexdigest())
             
             try:
                 tx_hash, success = blockchain_service.register_patient(patient_id_hash)

@@ -10,9 +10,26 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
 from django.conf import settings
-from web3 import Web3
-from web3.exceptions import TransactionNotFound, TimeExhausted
-import redis
+
+# Lazy imports — web3 and redis are not installed on Vercel.
+# All methods that use them check self.connected first and return
+# graceful fallbacks when the libraries are unavailable.
+try:
+    from web3 import Web3
+    from web3.exceptions import TransactionNotFound, TimeExhausted
+    _WEB3_AVAILABLE = True
+except ImportError:
+    _WEB3_AVAILABLE = False
+    Web3 = None  # type: ignore
+    TransactionNotFound = Exception  # type: ignore
+    TimeExhausted = Exception  # type: ignore
+
+try:
+    import redis as _redis_module
+    _REDIS_AVAILABLE = True
+except ImportError:
+    _redis_module = None  # type: ignore
+    _REDIS_AVAILABLE = False
 
 logger = logging.getLogger('blockchain')
 
@@ -25,47 +42,51 @@ class BlockchainService:
     
     def __init__(self):
         """Initialize blockchain connection and load contracts."""
-        # Connect to local Hardhat network
-        self.w3 = Web3(Web3.HTTPProvider(settings.BLOCKCHAIN_PROVIDER_URL))
-        
-        # Note: Hardhat doesn't require PoA middleware in newer versions
-        
-        # Verify connection
         self.connected = False
-        try:
-            if self.w3.is_connected():
-                logger.info(f"Connected to blockchain network. Latest block: {self.w3.eth.block_number}")
-                self.connected = True
-                
-                # Load contract instances
-                self.patient_registry = self._load_contract('PatientRegistry')
-                self.blocked_ip_registry = self._load_contract('BlockedIPRegistry')
-                self.attack_signature_registry = self._load_contract('AttackSignatureRegistry')
-                
-                # Use first account from Hardhat for transactions
-                self.account = self.w3.eth.accounts[0]
-                logger.info(f"Using account: {self.account}")
-            else:
-                logger.warning("Blockchain network not available - operating in offline mode")
-                self.patient_registry = None
-                self.blocked_ip_registry = None
-                self.attack_signature_registry = None
-                self.account = None
-        except Exception as e:
-            logger.warning(f"Blockchain connection failed: {e} - operating in offline mode")
+        self.w3 = None
+        self.patient_registry = None
+        self.blocked_ip_registry = None
+        self.attack_signature_registry = None
+        self.account = None
+
+        if not _WEB3_AVAILABLE:
+            logger.warning("web3 not installed — blockchain running in offline mode")
+            # Fall through to Redis init below
+        else:
+            # Connect to local Hardhat network
+            try:
+                self.w3 = Web3(Web3.HTTPProvider(settings.BLOCKCHAIN_PROVIDER_URL))
+                if self.w3.is_connected():
+                    logger.info(f"Connected to blockchain network. Latest block: {self.w3.eth.block_number}")
+                    self.connected = True
+                    self.patient_registry = self._load_contract('PatientRegistry')
+                    self.blocked_ip_registry = self._load_contract('BlockedIPRegistry')
+                    self.attack_signature_registry = self._load_contract('AttackSignatureRegistry')
+                    self.account = self.w3.eth.accounts[0]
+                    logger.info(f"Using account: {self.account}")
+                else:
+                    logger.warning("Blockchain network not available - operating in offline mode")
+            except Exception as e:
+                logger.warning(f"Blockchain connection failed: {e} - operating in offline mode")
             self.connected = False
             self.patient_registry = None
             self.blocked_ip_registry = None
             self.attack_signature_registry = None
             self.account = None
         
-        # Initialize Redis for caching
-        self.redis_client = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            db=settings.REDIS_DB,
-            decode_responses=True
-        )
+        # Initialize Redis for caching (graceful no-op when redis is not installed)
+        self.redis_client = None
+        if _REDIS_AVAILABLE:
+            try:
+                self.redis_client = _redis_module.Redis(
+                    host=getattr(settings, 'REDIS_HOST', 'localhost'),
+                    port=getattr(settings, 'REDIS_PORT', 6379),
+                    db=getattr(settings, 'REDIS_DB', 0),
+                    decode_responses=True,
+                    socket_connect_timeout=2,
+                )
+            except Exception as e:
+                logger.warning(f"Redis unavailable for blockchain cache: {e}")
         
         # Cache timeout for blockchain reads (5 minutes)
         self.cache_timeout = 300
@@ -141,6 +162,8 @@ class BlockchainService:
     
     def _cache_get(self, key: str) -> Optional[Any]:
         """Get value from Redis cache."""
+        if not self.redis_client:
+            return None
         try:
             cached_value = self.redis_client.get(key)
             if cached_value:
@@ -148,14 +171,16 @@ class BlockchainService:
         except Exception as e:
             logger.warning(f"Cache get error for key {key}: {e}")
         return None
-    
+
     def _cache_set(self, key: str, value: Any, timeout: int = None) -> None:
         """Set value in Redis cache."""
+        if not self.redis_client:
+            return
         try:
             timeout = timeout or self.cache_timeout
             self.redis_client.setex(
-                key, 
-                timeout, 
+                key,
+                timeout,
                 json.dumps(value, default=str)
             )
         except Exception as e:

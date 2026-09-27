@@ -1,7 +1,17 @@
 from django.db import models
 from django.utils import timezone
-from web3 import Web3
 from datetime import date
+
+
+def _web3_keccak(text: str) -> str:
+    """Lazy web3 import so the models module loads on Vercel (no web3 installed)."""
+    try:
+        from web3 import Web3
+        return "0x" + Web3.keccak(text=text).hex()
+    except ImportError:
+        # Fallback: SHA-256 hex when web3 is not available
+        import hashlib
+        return "0x" + hashlib.sha256(text.encode()).hexdigest()
 
 
 class Branch(models.Model):
@@ -52,13 +62,13 @@ class Patient(models.Model):
             from datetime import datetime
             dob = datetime.strptime(dob, '%Y-%m-%d').date()
         data = f"{self.name}{dob}{self.contact_email}"
-        return "0x" + Web3.keccak(text=data).hex()
+        return _web3_keccak(data)
     
     @staticmethod
     def generate_blockchain_id_static(name, date_of_birth, email):
         """Static method to generate blockchain ID for testing"""
         data = f"{name}{date_of_birth}{email}"
-        return "0x" + Web3.keccak(text=data).hex()
+        return _web3_keccak(data)
     
     def calculate_age(self):
         """Calculate age from date of birth"""

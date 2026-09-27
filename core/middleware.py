@@ -10,11 +10,17 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
-import redis
+# Lazy import — redis is not installed on Vercel
+try:
+    import redis as _redis_module
+    _REDIS_AVAILABLE = True
+except ImportError:
+    _redis_module = None  # type: ignore
+    _REDIS_AVAILABLE = False
+
 from django.conf import settings
 from django.http import JsonResponse, HttpRequest, HttpResponse
 from django.utils.deprecation import MiddlewareMixin
-from web3 import Web3
 
 from .blockchain_service import get_blockchain_service
 from .threat_calculator import get_threat_calculator
@@ -39,20 +45,29 @@ class SecurityMiddleware:
         """
         self.get_response = get_response
         
-        # Initialize Redis client for caching and rate limiting
-        try:
-            self.redis = redis.Redis(
-                host=settings.REDIS_HOST,
-                port=settings.REDIS_PORT,
-                db=settings.REDIS_DB,
-                decode_responses=True
-            )
-            # Test Redis connection
-            self.redis.ping()
-            logger.info("Redis connection established")
-        except Exception as e:
-            logger.warning(f"Redis connection failed: {e} - using in-memory fallback")
-            self.redis = None
+        # Initialize Redis client for caching and rate limiting.
+        # On Vercel (and any environment without Redis) this silently
+        # degrades to None — all Redis-dependent features are no-ops.
+        self.redis = None
+        if _REDIS_AVAILABLE:
+            redis_url = getattr(settings, 'REDIS_URL', '')
+            redis_host = getattr(settings, 'REDIS_HOST', 'localhost')
+            redis_pw = getattr(settings, 'REDIS_PASSWORD', '')
+            if redis_url or redis_host != 'localhost' or redis_pw:
+                try:
+                    self.redis = _redis_module.Redis(
+                        host=redis_host,
+                        port=getattr(settings, 'REDIS_PORT', 6379),
+                        db=getattr(settings, 'REDIS_DB', 0),
+                        decode_responses=True,
+                        socket_connect_timeout=2,
+                        socket_timeout=2,
+                    )
+                    self.redis.ping()
+                    logger.info("Redis connection established")
+                except Exception as e:
+                    logger.warning(f"Redis connection failed: {e} - using in-memory fallback")
+                    self.redis = None
         
         # Initialize blockchain service and threat calculator
         self.blockchain = get_blockchain_service()
@@ -99,7 +114,13 @@ class SecurityMiddleware:
             
             # Extract client IP address
             ip_address = self._get_client_ip(request)
-            ip_hash = Web3.keccak(text=ip_address).hex()
+            # Hash the IP for blockchain lookup (web3 may not be installed on Vercel)
+            try:
+                from web3 import Web3 as _W3
+                ip_hash = _W3.keccak(text=ip_address).hex()
+            except ImportError:
+                import hashlib
+                ip_hash = "0x" + hashlib.sha256(ip_address.encode()).hexdigest()
             
             logger.debug(f"Processing request from IP: {ip_address} to {request.path}")
             
@@ -509,48 +530,36 @@ class SecurityMiddleware:
         Args:
             ip_address: Client IP address
         """
+        if not self.redis:
+            return
         try:
-            # Clear threat calculation caches
             cache_keys = [
                 f"rate:{ip_address}",
                 f"pattern:{ip_address}",
                 f"ua:{ip_address}",
                 f"auth_fail:{ip_address}",
                 f"captcha_failures:{ip_address}",
-                f"temp_blocked:{ip_address}"
+                f"temp_blocked:{ip_address}",
             ]
-            
             for key in cache_keys:
                 self.redis.delete(key)
-            
             logger.debug(f"Cleared caches for blocked IP: {ip_address}")
-            
         except Exception as e:
             logger.error(f"Error clearing caches for {ip_address}: {e}")
     
     def _verify_captcha(self, request: HttpRequest, ip_address: str) -> bool:
         """
         Verify CAPTCHA response (Requirements 6.2, 6.3).
-        
-        This method implements comprehensive CAPTCHA verification:
-        - Checks CAPTCHA tokens stored in Redis (Requirements 6.2)
-        - Tracks CAPTCHA failures and blocks after 3 failures (Requirements 6.3)
-        - Exempts authenticated users with established sessions (Requirements 6.5)
-        - Reduces threat score after successful CAPTCHA (Requirements 6.4)
-        
-        Args:
-            request: Django HTTP request object
-            ip_address: Client IP address
-            
-        Returns:
-            True if CAPTCHA is valid or not required, False if CAPTCHA required/failed
         """
+        # No Redis = no CAPTCHA storage = treat as verified (fail-open for availability)
+        if not self.redis:
+            return True
         try:
             # Check if user is authenticated with established session (Requirements 6.5)
             if request.user.is_authenticated:
                 session_age = self._get_session_age(request)
-                if session_age and session_age > 300:  # 5 minutes of established session
-                    logger.debug(f"CAPTCHA exemption for authenticated user: {request.user} (session age: {session_age}s)")
+                if session_age and session_age > 300:
+                    logger.debug(f"CAPTCHA exemption for authenticated user: {request.user}")
                     return True
             
             # Check for CAPTCHA token in headers
